@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Theo Dõi Thói Quen & Mục Tiêu Hằng Ngày</title>
+  
+  <!-- Mobile & PWA / APK Meta Tags -->
+  <meta name="theme-color" content="#2D6A4F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Ứng dụng theo dõi thói quen, mục tiêu từng ngày, ghi chú nhật ký và biểu đồ tiến độ">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div class="app-shell">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <img src="assets/icon.svg" alt="Logo" class="app-logo-mini">
+        <div class="header-title-box">
+          <h1>Mục Tiêu Mỗi Ngày</h1>
+          <div class="header-subtitle">
+            <span>🌱 Từng bước hoàn thiện bản thân</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" id="btnOpenAddGoal" title="Thêm mục tiêu">+</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+
+      <!-- ================= TAB 1: HÔM NAY (TODAY) ================= -->
+      <section id="tab-today" class="tab-panel active">
+        
+        <!-- Date Selector Navigator -->
+        <div class="date-selector">
+          <button class="date-nav-btn" id="btnPrevDate" title="Ngày trước">◀</button>
+          <div class="date-display">
+            <span id="currentDateLabel">Hôm nay</span>
+            <span class="date-tag" id="currentDateFull">Thứ 6, 18 thg 9, 2026</span>
+          </div>
+          <button class="date-nav-btn" id="btnNextDate" title="Ngày sau">▶</button>
+        </div>
+
+        <!-- Progress Hero Card -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <div>
+              <div class="progress-title">Tiến độ ngày</div>
+              <div class="progress-percentage" id="todayPercent">0%</div>
+            </div>
+            <div class="progress-streak-badge" id="todayStreak">
+              🔥 <span>0 ngày liên tục</span>
+            </div>
+          </div>
+          
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="todayProgressBar" style="width: 0%;"></div>
+          </div>
+          
+          <div class="progress-meta">
+            <span id="todayRatio">0/0 mục tiêu</span>
+            <span>Cố gắng mỗi ngày!</span>
+          </div>
+        </div>
+
+        <!-- Goals Section -->
+        <div class="section-header">
+          <h2 class="section-title">Nhiệm vụ hôm nay</h2>
+          <span class="section-badge" id="todayGoalCountBadge">Đã lên lịch</span>
+        </div>
+
+        <div class="goals-list" id="goalsListToday">
+          <!-- Dynamically populated via app.js -->
+        </div>
+
+      </section>
+
+      <!-- ================= TAB 2: LỊCH & TIẾN ĐỘ (CALENDAR & STATS) ================= -->
+      <section id="tab-calendar" class="tab-panel">
+        
+        <!-- Month Calendar Card -->
+        <div class="calendar-card">
+          <div class="cal-header">
+            <button class="date-nav-btn" id="calPrevMonth">◀</button>
+            <span class="cal-month-title" id="calMonthTitle">Tháng 9 2026</span>
+            <button class="date-nav-btn" id="calNextMonth">▶</button>
+          </div>
+          
+          <div class="cal-weekdays">
+            <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
+          </div>
+          
+          <div class="cal-grid" id="calGrid">
+            <!-- Dynamically populated calendar days -->
+          </div>
+
+          <!-- Calendar Heatmap Legend -->
+          <div class="cal-legend">
+            <div class="legend-item">
+              <span class="legend-swatch" style="background: #D8F3DC; border: 1px solid #2D6A4F;"></span>
+              <span>Đạt 100%</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch" style="background: #FEF3C7; border: 1px solid #D97706;"></span>
+              <span>Đạt một phần</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch" style="background: #F1F5F9; border: 1px solid #CBD5E1;"></span>
+              <span>Chưa hoàn thành</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Performance Chart -->
+        <div class="chart-card">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title">Biểu đồ 7 ngày gần nhất</h3>
+            <span class="section-badge">% Hoàn thành</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="completionChart"></canvas>
+          </div>
+        </div>
+
+        <!-- ================= BIỂU ĐỒ ĐẾM SỐ NGÀY MỤC TIÊU ĐÃ ĐẠT (THEO YÊU CẦU ĐỔI MÀU) ================= -->
+        <div class="goal-milestones-card">
+          <div class="section-header" style="margin-bottom: 8px;">
+            <div>
+              <h3 class="section-title">Số ngày mục tiêu đã đạt</h3>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
+                Tự động đổi màu theo số ngày quy định 🚀
+              </div>
+            </div>
+            <span class="section-badge" id="milestonesTotalGoalsBadge">Đang theo dõi</span>
+          </div>
+
+          <!-- Quick Summary Strip (Gọn gàng & Đầy đủ thông tin) -->
+          <div class="milestones-quick-strip">
+            <div class="quick-stat-item">
+              <span class="quick-stat-num" id="statCurrentStreak">0 ngày</span>
+              <span class="quick-stat-lbl">Chuỗi cao nhất 🔥</span>
+            </div>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="quick-stat-num" id="statTotalCompleted">0</span>
+              <span class="quick-stat-lbl">Tổng ngày đạt</span>
+            </div>
+            <div class="quick-stat-divider"></div>
+            <div class="quick-stat-item">
+              <span class="quick-stat-num" id="statCompletionRate">0%</span>
+              <span class="quick-stat-lbl">Tỷ lệ tuần</span>
+            </div>
+          </div>
+
+          <!-- Danh sách Biểu Đồ & Cột Mốc Số Ngày Của Từng Mục Tiêu -->
+          <div class="goal-milestones-list" id="goalMilestonesList">
+            <!-- Dynamically populated via app.js -->
+          </div>
+        </div>
+
+        <!-- Day Inspector Card (Shows details when user taps on any calendar day) -->
+        <div class="day-inspector-card" id="dayInspectorCard">
+          <div class="day-inspector-header">
+            <span id="dayInspectorTitle">Chi tiết ngày đã chọn</span>
+          </div>
+          <div id="dayInspectorList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= TAB 3: MỤC TIÊU (MANAGE GOALS) ================= -->
+      <section id="tab-goals" class="tab-panel">
+        <div class="section-header">
+          <h2 class="section-title">Tất cả mục tiêu</h2>
+          <button class="btn-pill-small" onclick="window.appOpenAddGoal()" style="background: var(--primary); color: #fff; font-weight: 600;">+ Thêm mới</button>
+        </div>
+        
+        <div class="goals-list" id="goalsListManage">
+          <!-- Dynamically populated via app.js -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: CÀI ĐẶT & DỮ LIỆU (SETTINGS) ================= -->
+      <section id="tab-settings" class="tab-panel">
+        
+        <div class="settings-card">
+          <div class="settings-group-title">Sao lưu & Đồng bộ</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">
+            Dữ liệu của bạn được lưu an toàn trên máy (offline). Bạn có thể sao lưu để chuyển sang máy khác bất cứ lúc nào.
+          </p>
+          <button class="settings-btn" id="btnExportData">
+            <span>💾 Xuất dữ liệu dự phòng (JSON)</span>
+            <span>⬇️</span>
+          </button>
+          <button class="settings-btn" id="btnImportData">
+            <span>📂 Khôi phục dữ liệu từ tệp JSON</span>
+            <span>⬆️</span>
+          </button>
+          <input type="file" id="fileImport" accept=".json" style="display: none;">
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-group-title">Quản lý dữ liệu mẫu</div>
+          <button class="settings-btn" id="btnLoadSampleData">
+            <span>🔄 Nạp dữ liệu mẫu trải nghiệm</span>
+            <span>▶️</span>
+          </button>
+          <button class="settings-btn danger" id="btnResetData">
+            <span>🗑️ Xóa toàn bộ dữ liệu (Đặt lại từ đầu)</span>
+            <span>⚠️</span>
+          </button>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-group-title">Thông tin ứng dụng</div>
+          <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.6;">
+            <div><strong>Habit Tracker v1.0.0</strong></div>
+            <div style="color: var(--text-muted); font-size: 0.78rem;">Phát triển riêng cho việc theo dõi thói quen & hoàn thiện bản thân mỗi ngày.</div>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted);">
+              ✅ Không yêu cầu internet (Offline 100%)<br>
+              ✅ Tự động tính Streak & Tỷ lệ % hoàn thành<br>
+              ✅ Ghi chú chi tiết cho từng nhiệm vụ<br>
+              ✅ Đóng gói sẵn sàng xuất file APK cho Android
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Floating Action Button (FAB) -->
+    <button class="fab" id="fabAddGoal" title="Thêm mục tiêu mới">+</button>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="app-nav">
+      <button class="nav-item active" data-tab="tab-today">
+        <span class="nav-icon">📅</span>
+        <span>Hôm nay</span>
+      </button>
+      <button class="nav-item" data-tab="tab-calendar">
+        <span class="nav-icon">📊</span>
+        <span>Lịch & Biểu đồ</span>
+      </button>
+      <button class="nav-item" data-tab="tab-goals">
+        <span class="nav-icon">🎯</span>
+        <span>Mục tiêu</span>
+      </button>
+      <button class="nav-item" data-tab="tab-settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Cài đặt</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ================= MODAL: THÊM / SỬA MỤC TIÊU ================= -->
+  <div class="modal-overlay" id="modalGoal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalGoalTitle">Thêm mục tiêu mới</h3>
+        <button class="modal-close-btn" id="btnCloseGoalModal">&times;</button>
+      </div>
+      
+      <form id="formGoal">
+        <div class="form-group">
+          <label class="form-label">Tên mục tiêu / Thói quen *</label>
+          <input type="text" class="form-input" id="goalTitleInput" placeholder="Ví dụ: Đọc sách 20 trang, Chạy bộ..." required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mô tả / Động lực (tùy chọn)</label>
+          <input type="text" class="form-input" id="goalDescInput" placeholder="Ví dụ: Giúp phát triển tư duy và từ vựng">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Danh mục</label>
+          <select class="form-select" id="goalCategorySelect">
+            <option value="health">Sức khỏe & Thể chất</option>
+            <option value="study">Học tập & Kỹ năng</option>
+            <option value="work">Công việc & Năng suất</option>
+            <option value="mind">Tinh thần & Thiền</option>
+            <option value="life">Lối sống & Kỷ luật</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Mục tiêu số lượng/ngày</label>
+            <input type="number" class="form-input" id="goalCountInput" min="1" max="999" value="1">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Đơn vị đo</label>
+            <input type="text" class="form-input" id="goalUnitInput" value="lần" placeholder="lần, phút, ly...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Ngày thực hiện trong tuần</label>
+          <div class="days-row" id="weekdayContainer">
+            <!-- Populated via app.js -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Màu sắc nhận diện</label>
+          <div class="color-picker-row" id="colorPickerContainer">
+            <!-- Populated via app.js -->
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary" style="flex: 2;">Lưu mục tiêu</button>
+          <button type="button" class="btn-danger" id="btnDeleteGoal" style="display: none; flex: 1;">Xóa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: GHI CHÚ NHIỆM VỤ ================= -->
+  <div class="modal-overlay" id="modalNote">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Ghi chú cho nhiệm vụ</h3>
+          <div style="font-size: 0.82rem; color: var(--primary); font-weight: 600;" id="noteGoalTitle">Tên mục tiêu</div>
+          <div style="font-size: 0.74rem; color: var(--text-muted);" id="noteDateDisplay">Ngày: 18/09/2026</div>
+        </div>
+        <button class="modal-close-btn" id="btnCloseNoteModal">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nội dung ghi chú / Cảm nhận / Kết quả:</label>
+        <textarea class="form-textarea" id="noteTextarea" placeholder="Hôm nay bạn hoàn thành thế nào? Có khó khăn hay bài học gì không?..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="btnSaveNote">Lưu ghi chú</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Message -->
+  <div class="toast" id="toast">Thông báo</div>
+
+  <!-- Main Application Script -->
+  <script src="js/app.js"></script>
+
+  <!-- Offline Service Worker Registration for PWA & APK -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

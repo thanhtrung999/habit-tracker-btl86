@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+npm-debug.log
+
+# Build outputs
+www/
+dist/
+build/
+android/app/build/
+
+# Operating System Files
+.DS_Store
+Thumbs.db

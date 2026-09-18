@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D6A4F" />
+      <stop offset="100%" stop-color="#1B4332" />
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#74C69D" />
+      <stop offset="100%" stop-color="#52B788" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  
+  <!-- Background rounded squircle -->
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#bg-grad)" filter="url(#shadow)" />
+  
+  <!-- Circular Progress Track -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#2D6A4F" stroke-width="24" stroke-opacity="0.6" />
+  
+  <!-- Progress Indicator Arc -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#accent-grad)" stroke-width="24" stroke-linecap="round" stroke-dasharray="879.6" stroke-dashoffset="220" transform="rotate(-90 256 256)" />
+  
+  <!-- Central Checkmark / Sprout icon -->
+  <path d="M190 260 L235 305 L325 205" fill="none" stroke="#FFFFFF" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Little Sparkle/Star for Achievement -->
+  <circle cx="340" cy="170" r="12" fill="#95D5B2" />
+</svg>

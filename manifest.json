@@ -1,0 +1,18 @@
+{
+  "name": "HabitTracker - Theo Dõi Thói Quen",
+  "short_name": "HabitTracker",
+  "description": "Ứng dụng theo dõi thói quen, tiến độ hoàn thành mục tiêu hằng ngày và ghi chú",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2D6A4F",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
