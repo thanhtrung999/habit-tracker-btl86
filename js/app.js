@@ -253,9 +253,17 @@
     DOM.goalMilestonesList = document.getElementById('goalMilestonesList');
     DOM.milestonesTotalGoalsBadge = document.getElementById('milestonesTotalGoalsBadge');
     DOM.chartCanvas = document.getElementById('completionChart');
-    DOM.dayInspectorCard = document.getElementById('dayInspectorCard');
-    DOM.dayInspectorTitle = document.getElementById('dayInspectorTitle');
-    DOM.dayInspectorList = document.getElementById('dayInspectorList');
+    DOM.calSelectedDayBanner = document.getElementById('calSelectedDayBanner');
+    DOM.calSelectedDateText = document.getElementById('calSelectedDateText');
+    DOM.calSelectedStatusText = document.getElementById('calSelectedStatusText');
+    DOM.btnOpenDayCheckinModal = document.getElementById('btnOpenDayCheckinModal');
+
+    // Day Checkin Modal (Calendar Tab)
+    DOM.modalDayCheckin = document.getElementById('modalDayCheckin');
+    DOM.dayCheckinModalDate = document.getElementById('dayCheckinModalDate');
+    DOM.dayCheckinGoalsList = document.getElementById('dayCheckinGoalsList');
+    DOM.btnCloseDayCheckinModal = document.getElementById('btnCloseDayCheckinModal');
+    DOM.btnDoneDayCheckin = document.getElementById('btnDoneDayCheckin');
 
     // Settings Tab
     DOM.btnExportData = document.getElementById('btnExportData');
@@ -368,6 +376,60 @@
         streak++;
         offset++;
       } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  // Calculate Consecutive Streak for an individual goal (Chuỗi ngày liên tiếp)
+  function getGoalStreak(goalId) {
+    const goals = Storage.getGoals();
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return 0;
+
+    const records = Storage.getRecords();
+    let streak = 0;
+    const now = new Date();
+    const todayStr = formatDate(now);
+
+    const isTodayScheduled = isGoalScheduledForDate(goal, todayStr);
+    const todayRec = records[`${goalId}_${todayStr}`];
+
+    let offset = 0;
+    if (isTodayScheduled) {
+      if (todayRec && todayRec.completed) {
+        streak = 1;
+        offset = 1;
+      } else {
+        // Today is not completed yet; start checking backwards from yesterday
+        // so current unbroken streak is preserved during the day
+        offset = 1;
+      }
+    } else {
+      // Goal is not scheduled today (e.g. weekend); start checking from yesterday
+      offset = 1;
+    }
+
+    // Traverse past scheduled days backwards (up to 1000 days)
+    while (offset < 1000) {
+      const d = new Date();
+      d.setDate(now.getDate() - offset);
+      const dStr = formatDate(d);
+
+      if (!isGoalScheduledForDate(goal, dStr)) {
+        // Unscheduled day does not break streak
+        offset++;
+        continue;
+      }
+
+      const rec = records[`${goalId}_${dStr}`];
+      if (rec && rec.completed) {
+        streak++;
+        offset++;
+      } else {
+        // Streak ends when a scheduled day was missed
         break;
       }
     }
@@ -558,7 +620,7 @@
     renderCalendarGrid();
     renderStatsOverview();
     renderChart();
-    renderDayInspector(state.selectedCalendarDateStr);
+    updateSelectedDayBanner(state.selectedCalendarDateStr);
   }
 
   function renderCalendarGrid() {
@@ -617,65 +679,221 @@
         state.selectedCalendarDateStr = dateStr;
         document.querySelectorAll('.cal-day-cell').forEach(c => c.classList.remove('selected'));
         cell.classList.add('selected');
-        renderDayInspector(dateStr);
+        updateSelectedDayBanner(dateStr);
       });
 
       DOM.calGrid.appendChild(cell);
     }
   }
 
-  function renderDayInspector(dateStr) {
-    const friendly = getFriendlyDateString(dateStr);
-    DOM.dayInspectorTitle.textContent = `Chi tiết ngày: ${friendly.full}`;
-
+  function updateSelectedDayBanner(dateStr) {
+    if (!DOM.calSelectedDayBanner) return;
     const goals = Storage.getGoals();
     const activeGoals = goals.filter(g => isGoalScheduledForDate(g, dateStr));
+    const friendly = getFriendlyDateString(dateStr);
 
-    DOM.dayInspectorList.innerHTML = '';
+    if (DOM.calSelectedDateText) {
+      DOM.calSelectedDateText.textContent = friendly.full;
+    }
+
+    if (DOM.calSelectedStatusText) {
+      if (activeGoals.length === 0) {
+        DOM.calSelectedStatusText.textContent = 'Không có mục tiêu nào vào ngày này';
+      } else {
+        const progress = getDateProgress(dateStr);
+        const completedCount = activeGoals.filter(g => getRecord(g.id, dateStr).completed).length;
+        DOM.calSelectedStatusText.textContent = `${completedCount}/${activeGoals.length} mục tiêu hoàn thành (${progress.percent}%)`;
+      }
+    }
+  }
+
+  function refreshCalendarDayCell(dateStr) {
+    if (!DOM.calGrid) return;
+    const cell = DOM.calGrid.querySelector(`.cal-day-cell[data-date="${dateStr}"]`);
+    if (!cell) return;
+    const progress = getDateProgress(dateStr);
+
+    cell.classList.remove('status-perfect', 'status-partial', 'status-empty');
+    if (progress.total > 0) {
+      if (progress.percent === 100) {
+        cell.classList.add('status-perfect');
+      } else if (progress.percent > 0) {
+        cell.classList.add('status-partial');
+      } else {
+        cell.classList.add('status-empty');
+      }
+    }
+
+    let dot = cell.querySelector('.cal-dot');
+    if (progress.percent > 0) {
+      if (!dot) {
+        dot = document.createElement('div');
+        dot.className = 'cal-dot';
+        cell.appendChild(dot);
+      }
+    } else {
+      if (dot) dot.remove();
+    }
+  }
+
+  function openDayCheckinModal(dateStr) {
+    state.selectedCalendarDateStr = dateStr;
+    const goals = Storage.getGoals();
+    const activeGoals = goals.filter(g => isGoalScheduledForDate(g, dateStr));
+    const friendly = getFriendlyDateString(dateStr);
+
+    if (DOM.dayCheckinModalDate) {
+      DOM.dayCheckinModalDate.textContent = `Ngày: ${friendly.full}`;
+    }
+
+    if (!DOM.dayCheckinGoalsList) return;
+    DOM.dayCheckinGoalsList.innerHTML = '';
 
     if (activeGoals.length === 0) {
-      DOM.dayInspectorList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">Không có mục tiêu nào vào ngày này.</p>';
+      DOM.dayCheckinGoalsList.innerHTML = `
+        <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 0.88rem;">
+          Không có mục tiêu nào được lên lịch vào ngày này.
+        </div>
+      `;
+      openModal(DOM.modalDayCheckin);
       return;
     }
 
-    activeGoals.forEach(g => {
-      const rec = getRecord(g.id, dateStr);
+    activeGoals.forEach(goal => {
+      const rec = getRecord(goal.id, dateStr);
+      const isCompleted = !!rec.completed;
+      const targetCount = goal.targetCount || 1;
+      const currentCount = rec.currentCount || 0;
+
       const item = document.createElement('div');
-      item.style.padding = '8px 0';
-      item.style.borderBottom = '1px solid var(--border)';
-      item.style.display = 'flex';
-      item.style.justifyContent = 'space-between';
-      item.style.alignItems = 'flex-start';
+      item.className = 'day-checkin-goal-item';
+      item.style.borderLeft = `4px solid ${goal.color || 'var(--primary)'}`;
 
       item.innerHTML = `
-        <div>
-          <div style="font-size: 0.88rem; font-weight: 600; color: ${rec.completed ? 'var(--primary)' : 'var(--text-main)'}">
-            ${rec.completed ? '✅' : '⚪'} ${escapeHTML(g.title)}
+        <div class="day-checkin-goal-top">
+          <div class="day-checkin-goal-info">
+            <div class="day-checkin-goal-title">${escapeHTML(goal.title)}</div>
+            <div class="day-checkin-goal-sub">
+              ${targetCount > 1 ? `Mục tiêu: <strong id="dayCheckinCountDisplay_${goal.id}">${currentCount}/${targetCount}</strong> ${escapeHTML(goal.unit || 'lần')}` : getCategoryName(goal.category)}
+            </div>
           </div>
-          ${rec.note ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; font-style: italic;">📝 "${escapeHTML(rec.note)}"</div>` : ''}
+          <button type="button" class="day-checkin-toggle-btn ${isCompleted ? 'completed' : ''}" data-goal-id="${goal.id}">
+            ${isCompleted ? '✅ Đã hoàn thành' : '⚪ Chưa đạt'}
+          </button>
         </div>
-        <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">
-          ${rec.completed ? 'Hoàn thành' : 'Chưa xong'}
-        </span>
+
+        ${targetCount > 1 ? `
+          <div class="day-checkin-counter-row">
+            <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">Cập nhật số lần:</span>
+            <button type="button" class="counter-btn btn-counter-dec" data-goal-id="${goal.id}">-</button>
+            <span class="counter-display" id="dayCheckinCountNum_${goal.id}">${currentCount}</span>
+            <button type="button" class="counter-btn btn-counter-inc" data-goal-id="${goal.id}">+</button>
+          </div>
+        ` : ''}
+
+        <div class="day-checkin-note-row">
+          <textarea class="day-checkin-note-field" data-goal-id="${goal.id}" rows="2" placeholder="Ghi chú kết quả, cảm nhận cho mục tiêu này...">${escapeHTML(rec.note || '')}</textarea>
+        </div>
       `;
 
-      DOM.dayInspectorList.appendChild(item);
+      // Event listener for toggle button
+      const toggleBtn = item.querySelector('.day-checkin-toggle-btn');
+      toggleBtn.addEventListener('click', () => {
+        const currentRec = getRecord(goal.id, dateStr);
+        const newCompleted = !currentRec.completed;
+        currentRec.completed = newCompleted;
+        if (newCompleted && targetCount > 1 && (currentRec.currentCount || 0) < targetCount) {
+          currentRec.currentCount = targetCount;
+        } else if (!newCompleted && targetCount > 1 && (currentRec.currentCount || 0) >= targetCount) {
+          currentRec.currentCount = 0;
+        }
+        saveRecord(currentRec);
+
+        // Update UI
+        toggleBtn.classList.toggle('completed', newCompleted);
+        toggleBtn.innerHTML = newCompleted ? '✅ Đã hoàn thành' : '⚪ Chưa đạt';
+        if (targetCount > 1) {
+          const countDisplay = item.querySelector(`#dayCheckinCountDisplay_${goal.id}`);
+          const countNum = item.querySelector(`#dayCheckinCountNum_${goal.id}`);
+          if (countDisplay) countDisplay.textContent = `${currentRec.currentCount}/${targetCount}`;
+          if (countNum) countNum.textContent = currentRec.currentCount;
+        }
+
+        handleDayCheckinDataChange(dateStr);
+      });
+
+      // Event listeners for counter controls if targetCount > 1
+      if (targetCount > 1) {
+        const decBtn = item.querySelector('.btn-counter-dec');
+        const incBtn = item.querySelector('.btn-counter-inc');
+        const countDisplay = item.querySelector(`#dayCheckinCountDisplay_${goal.id}`);
+        const countNum = item.querySelector(`#dayCheckinCountNum_${goal.id}`);
+
+        decBtn.addEventListener('click', () => {
+          const currentRec = getRecord(goal.id, dateStr);
+          if ((currentRec.currentCount || 0) > 0) {
+            currentRec.currentCount--;
+            currentRec.completed = currentRec.currentCount >= targetCount;
+            saveRecord(currentRec);
+            if (countDisplay) countDisplay.textContent = `${currentRec.currentCount}/${targetCount}`;
+            if (countNum) countNum.textContent = currentRec.currentCount;
+            toggleBtn.classList.toggle('completed', currentRec.completed);
+            toggleBtn.innerHTML = currentRec.completed ? '✅ Đã hoàn thành' : '⚪ Chưa đạt';
+            handleDayCheckinDataChange(dateStr);
+          }
+        });
+
+        incBtn.addEventListener('click', () => {
+          const currentRec = getRecord(goal.id, dateStr);
+          currentRec.currentCount = (currentRec.currentCount || 0) + 1;
+          currentRec.completed = currentRec.currentCount >= targetCount;
+          saveRecord(currentRec);
+          if (countDisplay) countDisplay.textContent = `${currentRec.currentCount}/${targetCount}`;
+          if (countNum) countNum.textContent = currentRec.currentCount;
+          toggleBtn.classList.toggle('completed', currentRec.completed);
+          toggleBtn.innerHTML = currentRec.completed ? '✅ Đã hoàn thành' : '⚪ Chưa đạt';
+          handleDayCheckinDataChange(dateStr);
+        });
+      }
+
+      // Note input event listener
+      const noteInput = item.querySelector('.day-checkin-note-field');
+      noteInput.addEventListener('input', () => {
+        const currentRec = getRecord(goal.id, dateStr);
+        currentRec.note = noteInput.value.trim();
+        saveRecord(currentRec);
+      });
+
+      DOM.dayCheckinGoalsList.appendChild(item);
     });
 
-    const jumpBtnContainer = document.createElement('div');
-    jumpBtnContainer.style.marginTop = '12px';
-    jumpBtnContainer.style.textAlign = 'center';
-    jumpBtnContainer.innerHTML = `
-      <button class="btn-pill-small" id="btnJumpToDate" style="width: 100%; justify-content: center; padding: 7px 12px; background: var(--bg-elevated); color: var(--primary); font-weight: 600; border-color: var(--border);">
-        📅 Mở ngày này để check-in &amp; ghi chú ➜
-      </button>
-    `;
-    jumpBtnContainer.querySelector('#btnJumpToDate').addEventListener('click', () => {
-      state.currentDateStr = dateStr;
-      switchTab('tab-today');
-      showToast(`Đã mở ngày: ${friendly.label}`);
-    });
-    DOM.dayInspectorList.appendChild(jumpBtnContainer);
+    openModal(DOM.modalDayCheckin);
+  }
+
+  function handleDayCheckinDataChange(dateStr) {
+    refreshCalendarDayCell(dateStr);
+    updateSelectedDayBanner(dateStr);
+    renderStatsOverview();
+    renderChart();
+    if (dateStr === state.currentDateStr) {
+      renderTodayTab();
+    }
+  }
+
+  function closeDayCheckinModal() {
+    if (DOM.dayCheckinGoalsList) {
+      DOM.dayCheckinGoalsList.querySelectorAll('.day-checkin-note-field').forEach(input => {
+        const goalId = input.dataset.goalId;
+        const currentRec = getRecord(goalId, state.selectedCalendarDateStr);
+        const newNote = input.value.trim();
+        if (currentRec.note !== newNote) {
+          currentRec.note = newNote;
+          saveRecord(currentRec);
+        }
+      });
+    }
+    closeModal(DOM.modalDayCheckin);
+    renderCalendarTab();
   }
 
   // --- Milestone Tiers & Color Specification ---
@@ -692,7 +910,7 @@
       minDays: 365,
       nextDays: null,
       tier: 'diamond',
-      label: 'Huyền thoại (≥ 365 ngày)',
+      label: 'Huyền thoại (≥ 365 ngày liên tiếp)',
       color: '#4F46E5',
       badgeBg: '#EEF2FF',
       badgeBorder: '#C7D2FE',
@@ -704,7 +922,7 @@
       minDays: 200,
       nextDays: 365,
       tier: 'ruby',
-      label: 'Siêu Kỷ Luật (≥ 200 ngày)',
+      label: 'Siêu Kỷ Luật (≥ 200 ngày liên tiếp)',
       color: '#DB2777',
       badgeBg: '#FDF2F8',
       badgeBorder: '#FBCFE8',
@@ -716,7 +934,7 @@
       minDays: 100,
       nextDays: 200,
       tier: 'gold',
-      label: 'Bậc Thầy (≥ 100 ngày)',
+      label: 'Bậc Thầy (≥ 100 ngày liên tiếp)',
       color: '#D97706',
       badgeBg: '#FFFBEB',
       badgeBorder: '#FDE68A',
@@ -728,7 +946,7 @@
       minDays: 60,
       nextDays: 100,
       tier: 'pastel',
-      label: 'Kiên Định (≥ 60 ngày)',
+      label: 'Kiên Định (≥ 60 ngày liên tiếp)',
       color: '#0D9488',
       badgeBg: '#F0FDFA',
       badgeBorder: '#99F6E4',
@@ -740,7 +958,7 @@
       minDays: 30,
       nextDays: 60,
       tier: 'purple',
-      label: 'Thói Quen Thép (≥ 30 ngày)',
+      label: 'Thói Quen Thép (≥ 30 ngày liên tiếp)',
       color: '#8B5CF6',
       badgeBg: '#F5F3FF',
       badgeBorder: '#DDD6FE',
@@ -752,7 +970,7 @@
       minDays: 10,
       nextDays: 30,
       tier: 'red',
-      label: 'Quyết Tâm (≥ 10 ngày)',
+      label: 'Quyết Tâm (≥ 10 ngày liên tiếp)',
       color: '#EF4444',
       badgeBg: '#FEF2F2',
       badgeBorder: '#FECACA',
@@ -764,7 +982,7 @@
       minDays: 5,
       nextDays: 10,
       tier: 'orange',
-      label: 'Bắt Nhịp (≥ 5 ngày)',
+      label: 'Bắt Nhịp (≥ 5 ngày liên tiếp)',
       color: '#F97316',
       badgeBg: '#FFF7ED',
       badgeBorder: '#FED7AA',
@@ -776,7 +994,7 @@
       minDays: 0,
       nextDays: 5,
       tier: 'starter',
-      label: 'Khởi Đầu (< 5 ngày)',
+      label: 'Khởi Đầu (< 5 ngày liên tiếp)',
       color: '#10B981',
       badgeBg: '#ECFDF5',
       badgeBorder: '#A7F3D0',
@@ -811,8 +1029,19 @@
     if (DOM.milestonesTotalGoalsBadge) {
       DOM.milestonesTotalGoalsBadge.textContent = `${goals.length} mục tiêu`;
     }
+
+    // Sort by consecutive streak descending
+    const sortedGoals = [...goals].map(g => {
+      return {
+        ...g,
+        streak: getGoalStreak(g.id),
+        completedDays: getGoalCompletedDaysCount(g.id)
+      };
+    }).sort((a, b) => b.streak - a.streak);
+
+    const maxStreak = sortedGoals.length > 0 ? Math.max(...sortedGoals.map(g => g.streak)) : 0;
     if (DOM.statCurrentStreak) {
-      DOM.statCurrentStreak.textContent = `${calculateStreak()} ngày`;
+      DOM.statCurrentStreak.textContent = `${maxStreak} ngày`;
     }
 
     // Total completions count across all goals
@@ -836,41 +1065,33 @@
       DOM.statCompletionRate.textContent = `${avgRate}%`;
     }
 
-    // Render Milestone Progress Items for Each Goal
+    // Render Milestone Progress Items for Each Goal (based on consecutive streak)
     if (DOM.goalMilestonesList) {
       DOM.goalMilestonesList.innerHTML = '';
 
       if (goals.length === 0) {
         DOM.goalMilestonesList.innerHTML = `
           <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">
-            Chưa có mục tiêu nào. Hãy thêm mục tiêu để bắt đầu theo dõi số ngày đạt!
+            Chưa có mục tiêu nào. Hãy thêm mục tiêu để bắt đầu theo dõi chuỗi ngày liên tiếp!
           </div>
         `;
         return;
       }
 
-      // Sort by completed days descending
-      const sortedGoals = [...goals].map(g => {
-        return {
-          ...g,
-          completedDays: getGoalCompletedDaysCount(g.id)
-        };
-      }).sort((a, b) => b.completedDays - a.completedDays);
-
       sortedGoals.forEach(goal => {
-        const days = goal.completedDays;
-        const tier = getMilestoneTier(days);
+        const streak = goal.streak;
+        const tier = getMilestoneTier(streak);
 
         let progressPercent = 0;
         let hintText = '';
 
         if (tier.nextDays) {
-          const needed = tier.nextDays - days;
+          const needed = tier.nextDays - streak;
           const range = tier.nextDays - tier.minDays;
-          const currentInRange = days - tier.minDays;
+          const currentInRange = streak - tier.minDays;
           progressPercent = Math.min(100, Math.max(10, Math.round((currentInRange / range) * 100)));
           const nextTier = getMilestoneTier(tier.nextDays);
-          hintText = `Còn <strong>${needed} ngày</strong> nữa để lên mốc <strong>${nextTier.colorName}</strong> (≥ ${tier.nextDays} ngày)`;
+          hintText = `Còn <strong>${needed} ngày liên tiếp</strong> nữa để lên mốc <strong>${nextTier.colorName}</strong> (≥ ${tier.nextDays} ngày)`;
         } else {
           progressPercent = 100;
           hintText = `Đã đạt mốc Kim Cương tối thượng! Xuất sắc 💎`;
@@ -896,8 +1117,8 @@
 
           <div class="goal-milestone-count-row">
             <div>
-              <span class="goal-milestone-days-big" style="color: ${tier.color};">${days}</span>
-              <span class="goal-milestone-days-unit">ngày đã đạt</span>
+              <span class="goal-milestone-days-big" style="color: ${tier.color};">${streak}</span>
+              <span class="goal-milestone-days-unit">ngày liên tiếp</span>
             </div>
             <span style="font-size: 0.78rem; font-weight: 700; color: ${tier.color};">
               Mốc: ${tier.colorName}
@@ -1428,6 +1649,26 @@
     DOM.btnSaveNote.addEventListener('click', saveNote);
     DOM.btnCloseNoteModal.addEventListener('click', closeNoteModal);
 
+    // Calendar Day Checkin Modal
+    if (DOM.btnOpenDayCheckinModal) {
+      DOM.btnOpenDayCheckinModal.addEventListener('click', () => {
+        openDayCheckinModal(state.selectedCalendarDateStr);
+      });
+    }
+    if (DOM.calSelectedDayBanner) {
+      DOM.calSelectedDayBanner.addEventListener('click', (e) => {
+        if (!e.target.closest('#btnOpenDayCheckinModal')) {
+          openDayCheckinModal(state.selectedCalendarDateStr);
+        }
+      });
+    }
+    if (DOM.btnCloseDayCheckinModal) {
+      DOM.btnCloseDayCheckinModal.addEventListener('click', closeDayCheckinModal);
+    }
+    if (DOM.btnDoneDayCheckin) {
+      DOM.btnDoneDayCheckin.addEventListener('click', closeDayCheckinModal);
+    }
+
     // Settings
     DOM.btnExportData.addEventListener('click', exportData);
     DOM.btnImportData.addEventListener('click', () => DOM.fileImport.click());
@@ -1448,6 +1689,7 @@
     window.addEventListener('click', (e) => {
       if (e.target === DOM.modalGoal) closeGoalModal();
       if (e.target === DOM.modalNote) closeNoteModal();
+      if (e.target === DOM.modalDayCheckin) closeDayCheckinModal();
     });
 
     // Close modal on Escape key
@@ -1455,6 +1697,7 @@
       if (e.key === 'Escape') {
         closeGoalModal();
         closeNoteModal();
+        closeDayCheckinModal();
       }
     });
 

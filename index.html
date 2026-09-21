@@ -120,6 +120,17 @@
               <span>Chưa hoàn thành</span>
             </div>
           </div>
+
+          <!-- Thanh Thao Tác Nhanh Ngày Đã Chọn (Ngay dưới lịch - không cần kéo xuống) -->
+          <div class="cal-selected-day-banner" id="calSelectedDayBanner">
+            <div class="cal-selected-day-info">
+              <div class="cal-selected-day-date" id="calSelectedDateText">Đang tải ngày...</div>
+              <div class="cal-selected-day-status" id="calSelectedStatusText">Chọn một ngày trên lịch</div>
+            </div>
+            <button type="button" class="btn-cal-action" id="btnOpenDayCheckinModal">
+              <span>📝 Check-in &amp; Ghi chú</span>
+            </button>
+          </div>
         </div>
 
         <!-- Weekly Performance Chart -->
@@ -133,13 +144,13 @@
           </div>
         </div>
 
-        <!-- ================= BIỂU ĐỒ ĐẾM SỐ NGÀY MỤC TIÊU ĐÃ ĐẠT (THEO YÊU CẦU ĐỔI MÀU) ================= -->
+        <!-- ================= BIỂU ĐỒ CHUỖI NGÀY LIÊN TIẾP ĐẠT MỤC TIÊU ================= -->
         <div class="goal-milestones-card">
           <div class="section-header" style="margin-bottom: 8px;">
             <div>
-              <h3 class="section-title">Số ngày mục tiêu đã đạt</h3>
+              <h3 class="section-title">Chuỗi ngày liên tiếp đạt mục tiêu</h3>
               <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
-                Tự động đổi màu theo số ngày quy định 🚀
+                Tự động đổi màu khi đạt các mốc chuỗi ngày liên tục 🚀
               </div>
             </div>
             <span class="section-badge" id="milestonesTotalGoalsBadge">Đang theo dõi</span>
@@ -166,16 +177,6 @@
           <!-- Danh sách Biểu Đồ & Cột Mốc Số Ngày Của Từng Mục Tiêu -->
           <div class="goal-milestones-list" id="goalMilestonesList">
             <!-- Dynamically populated via app.js -->
-          </div>
-        </div>
-
-        <!-- Day Inspector Card (Shows details when user taps on any calendar day) -->
-        <div class="day-inspector-card" id="dayInspectorCard">
-          <div class="day-inspector-header">
-            <span id="dayInspectorTitle">Chi tiết ngày đã chọn</span>
-          </div>
-          <div id="dayInspectorList">
-            <!-- Dynamically populated -->
           </div>
         </div>
 
@@ -349,6 +350,27 @@
 
       <div class="modal-actions">
         <button type="button" class="btn-primary" id="btnSaveNote">Lưu ghi chú</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: CHECK-IN & GHI CHÚ THEO NGÀY TRÊN LỊCH ================= -->
+  <div class="modal-overlay" id="modalDayCheckin">
+    <div class="modal-content modal-day-checkin-content">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Check-in &amp; Ghi chú ngày</h3>
+          <div class="modal-date-subtitle" id="dayCheckinModalDate">Ngày: 21/09/2026</div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseDayCheckinModal">&times;</button>
+      </div>
+
+      <div class="day-checkin-body" id="dayCheckinGoalsList">
+        <!-- Dynamically populated via app.js -->
+      </div>
+
+      <div class="modal-actions" style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);">
+        <button type="button" class="btn-primary" id="btnDoneDayCheckin">Hoàn tất &amp; Đóng</button>
       </div>
     </div>
   </div>
