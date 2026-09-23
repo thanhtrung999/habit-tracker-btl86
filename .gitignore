@@ -1,13 +1,22 @@
-# Dependencies
-node_modules/
-npm-debug.log
-
-# Build outputs
-www/
-dist/
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
 build/
-android/app/build/
+**/build/
+**/.dart_tool/
 
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# IDE Files
+.idea/
+*.iml
+.vscode/
+
+# Archives
+*.zip
