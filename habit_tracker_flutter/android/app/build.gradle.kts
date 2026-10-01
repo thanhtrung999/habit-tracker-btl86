@@ -27,12 +27,22 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Optimize exclusively for Xiaomi 15 Ultra (Snapdragon 8 Elite - 64-bit ARM)
+        ndk {
+            abiFilters.clear()
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("debug")
         }
     }

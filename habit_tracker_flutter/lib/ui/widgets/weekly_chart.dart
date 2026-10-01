@@ -37,7 +37,7 @@ class WeeklyChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 20),
                   SizedBox(width: 8),

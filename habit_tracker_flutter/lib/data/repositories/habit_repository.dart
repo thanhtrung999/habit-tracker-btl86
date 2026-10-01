@@ -133,17 +133,35 @@ class HabitRepository {
     );
   }
 
-  Future<int> calculateOverallStreak() async {
+  Future<Map<String, GoalRecord>> getAllRecordsMap() async {
+    final allRecords = await _dbService.getAllRecords();
+    return {for (var r in allRecords) '${r.goalId}_${r.date}': r};
+  }
+
+  Future<int> calculateOverallStreak([DateTime? asOfDate]) async {
     final goals = await _dbService.getAllGoals();
     if (goals.isEmpty) return 0;
 
-    final allRecords = await _dbService.getAllRecords();
-    final recordsMap = {for (var r in allRecords) '${r.goalId}_${r.date}': r};
+    final recordsMap = await getAllRecordsMap();
 
     int streak = 0;
-    final now = DateTime.now();
+    final now = asOfDate ?? DateTime.now();
 
-    for (int offset = 0; offset < 365; offset++) {
+    // Check today (offset 0): counts if all scheduled goals are completed
+    final todayScheduled = goals.where((g) => g.isScheduledForDate(now)).toList();
+    if (todayScheduled.isNotEmpty) {
+      int todayDone = 0;
+      for (final g in todayScheduled) {
+        final rec = recordsMap['${g.id}_${AppDateUtils.formatDate(now)}'];
+        if (rec != null && rec.completed) todayDone++;
+      }
+      if (todayDone == todayScheduled.length) {
+        streak++;
+      }
+    }
+
+    // Check past consecutive days (offset >= 1)
+    for (int offset = 1; offset < 365; offset++) {
       final checkDate = now.subtract(Duration(days: offset));
       final dateStr = AppDateUtils.formatDate(checkDate);
 
@@ -156,14 +174,7 @@ class HabitRepository {
         if (rec != null && rec.completed) completed++;
       }
 
-      final rate = completed / scheduledGoals.length;
-
-      // Allow today to be incomplete without breaking streak
-      if (offset == 0 && rate < 0.5) {
-        continue;
-      }
-
-      if (rate >= 0.5) {
+      if (completed == scheduledGoals.length) {
         streak++;
       } else {
         break;
@@ -173,7 +184,7 @@ class HabitRepository {
     return streak;
   }
 
-  Future<int> getGoalStreak(String goalId) async {
+  Future<int> getGoalStreak(String goalId, [DateTime? asOfDate]) async {
     final goals = await _dbService.getAllGoals();
     final goalMatches = goals.where((g) => g.id == goalId);
     if (goalMatches.isEmpty) return 0;
@@ -184,7 +195,7 @@ class HabitRepository {
       for (var r in allRecords.where((r) => r.goalId == goalId)) r.date: r
     };
 
-    final now = DateTime.now();
+    final now = asOfDate ?? DateTime.now();
     final todayStr = AppDateUtils.formatDate(now);
     final isTodayScheduled = goal.isScheduledForDate(now);
     final todayRec = recordsMap[todayStr];
@@ -220,11 +231,11 @@ class HabitRepository {
     return streak;
   }
 
-  Future<Map<String, int>> getAllGoalStreaks() async {
+  Future<Map<String, int>> getAllGoalStreaks([DateTime? asOfDate]) async {
     final goals = await _dbService.getAllGoals();
     final Map<String, int> result = {};
     for (final g in goals) {
-      result[g.id] = await getGoalStreak(g.id);
+      result[g.id] = await getGoalStreak(g.id, asOfDate);
     }
     return result;
   }
@@ -259,5 +270,9 @@ class HabitRepository {
 
   Future<void> importBackup(String json) async {
     await _dbService.importBackupJson(json);
+  }
+
+  Future<void> clearAllRecords() async {
+    await _dbService.clearAllRecords();
   }
 }

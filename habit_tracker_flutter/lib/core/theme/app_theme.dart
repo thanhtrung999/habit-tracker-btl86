@@ -11,12 +11,13 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
+      colorScheme: ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.primaryLight,
         surface: AppColors.card,
         error: AppColors.danger,
+        onPrimary: Colors.white,
+        onSurface: AppColors.textMain,
       ),
       textTheme: baseTextTheme.copyWith(
         headlineMedium: baseTextTheme.headlineMedium?.copyWith(
@@ -51,7 +52,69 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border, width: 1),
+          side: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: AppColors.textMain),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    final baseTextTheme = GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primary,
+        secondary: AppColors.primaryLight,
+        surface: Color(0xFF1E293B),
+        error: AppColors.danger,
+        onPrimary: Colors.white,
+        onSurface: Color(0xFFF8FAFC),
+      ),
+      textTheme: baseTextTheme.copyWith(
+        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          color: const Color(0xFFF8FAFC),
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+        ),
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
+          color: const Color(0xFFF8FAFC),
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        titleMedium: baseTextTheme.titleMedium?.copyWith(
+          color: const Color(0xFFF8FAFC),
+          fontWeight: FontWeight.w600,
+        ),
+        bodyLarge: baseTextTheme.bodyLarge?.copyWith(
+          color: const Color(0xFFF8FAFC),
+          fontWeight: FontWeight.w400,
+        ),
+        bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+          color: const Color(0xFF94A3B8),
+          fontWeight: FontWeight.w400,
+        ),
+        labelSmall: baseTextTheme.labelSmall?.copyWith(
+          color: const Color(0xFF64748B),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1E293B),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF334155), width: 1),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -59,6 +122,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: Color(0xFFF8FAFC)),
       ),
     );
   }

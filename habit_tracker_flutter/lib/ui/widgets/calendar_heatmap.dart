@@ -1,12 +1,16 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/date_utils.dart';
-import '../../data/models/day_progress.dart';
+import '../../data/models/goal_record.dart';
+import 'stacked_habit_deck.dart' show CategoryInfo;
 
 class CalendarHeatmap extends StatelessWidget {
   final DateTime currentMonth;
   final DateTime selectedDate;
-  final Map<String, DayProgress> monthProgress;
+  final List<CategoryInfo> categories;
+  final Map<String, GoalRecord> allRecords;
   final Function(DateTime) onSelectDate;
   final VoidCallback onPrevMonth;
   final VoidCallback onNextMonth;
@@ -15,7 +19,8 @@ class CalendarHeatmap extends StatelessWidget {
     super.key,
     required this.currentMonth,
     required this.selectedDate,
-    required this.monthProgress,
+    required this.categories,
+    required this.allRecords,
     required this.onSelectDate,
     required this.onPrevMonth,
     required this.onNextMonth,
@@ -30,83 +35,114 @@ class CalendarHeatmap extends StatelessWidget {
     // In Dart weekday: Mon=1, ..., Sun=7. We want Mon=0 ... Sun=6
     final startWeekdayOffset = (firstDayOfMonth.weekday - 1) % 7;
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
     const weekdayHeaders = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
+    // Category colors in order
+    final categoryColors = categories.map((c) => c.color).toList();
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1.2),
+        border: Border.all(color: Colors.black, width: 2.2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Colors.black,
+            offset: Offset(3.5, 3.5),
+            blurRadius: 0,
           ),
         ],
       ),
       child: Column(
         children: [
-          // Month navigation header
+          // 1. Month Navigation Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Tháng $month / $year',
+                'Tháng $month, $year',
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMain,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                  letterSpacing: -0.2,
                 ),
               ),
               Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left, color: AppColors.textMain),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    onPressed: onPrevMonth,
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onPrevMonth();
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: Colors.black, width: 1.6),
+                      ),
+                      child: const Icon(Icons.chevron_left, color: Colors.black, size: 20),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right, color: AppColors.textMain),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    onPressed: onNextMonth,
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onNextMonth();
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: Colors.black, width: 1.6),
+                      ),
+                      child: const Icon(Icons.chevron_right, color: Colors.black, size: 20),
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Weekday columns header
+          const SizedBox(height: 14),
+
+          // 2. Weekday Columns Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: weekdayHeaders.map((w) {
+              final isWeekend = w == 'T7' || w == 'CN';
               return SizedBox(
                 width: 38,
                 child: Center(
                   child: Text(
                     w,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textLight,
+                      fontWeight: FontWeight.w800,
+                      color: isWeekend ? const Color(0xFFEF4444) : const Color(0xFF64748B),
                     ),
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 10),
-          // Calendar Grid
+          const SizedBox(height: 8),
+
+          // 3. Calendar Days Grid with 5-Color Ring
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: startWeekdayOffset + daysInMonth,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              mainAxisSpacing: 8,
+              mainAxisSpacing: 6,
               crossAxisSpacing: 4,
               childAspectRatio: 0.95,
             ),
@@ -118,93 +154,194 @@ class CalendarHeatmap extends StatelessWidget {
               final dayNum = index - startWeekdayOffset + 1;
               final dayDate = DateTime(year, month, dayNum);
               final dateStr = AppDateUtils.formatDate(dayDate);
-              final progress = monthProgress[dateStr];
               final isToday = AppDateUtils.isToday(dateStr);
               final isSelected = dateStr == AppDateUtils.formatDate(selectedDate);
+              final isFuture = dayDate.isAfter(today);
 
-              Color dotColor = Colors.transparent;
-              if (progress != null) {
-                if (progress.isPerfect) {
-                  dotColor = AppColors.primary;
-                } else if (progress.isPartial) {
-                  dotColor = AppColors.primaryLight;
-                }
-              }
+              // Compute completion state for each category on this specific day
+              final completedStates = categories.map((cat) {
+                if (isFuture) return false;
+                final scheduled = cat.goals.where((g) => g.isScheduledForDate(dayDate)).toList();
+                if (scheduled.isEmpty) return false;
+                return scheduled.every((g) => allRecords['${g.id}_$dateStr']?.completed == true);
+              }).toList();
 
-              return InkWell(
-                onTap: () => onSelectDate(dayDate),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primarySubtle
-                        : (isToday ? AppColors.elevated : Colors.transparent),
-                    borderRadius: BorderRadius.circular(12),
-                    border: isSelected
-                        ? Border.all(color: AppColors.primary, width: 1.5)
-                        : (isToday ? Border.all(color: AppColors.borderCompleted) : null),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$dayNum',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isToday || isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected
-                              ? AppColors.primaryDark
-                              : (isToday ? AppColors.primary : AppColors.textMain),
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onSelectDate(dayDate);
+                },
+                child: Center(
+                  child: SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: CustomPaint(
+                      painter: _MultiCategoryRingPainter(
+                        completedStates: completedStates,
+                        categoryColors: categoryColors,
+                        isSelected: isSelected,
+                        isToday: isToday,
+                        isFuture: isFuture,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$dayNum',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: isToday || isSelected ? FontWeight.w900 : FontWeight.w700,
+                            color: isSelected
+                                ? Colors.black
+                                : (isFuture
+                                    ? const Color(0xFF94A3B8)
+                                    : (isToday ? Colors.black : AppColors.textMain)),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      // Dot indicator
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: dotColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
             },
           ),
-          const SizedBox(height: 12),
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem(AppColors.primary, 'Hoàn thành (100%)'),
-              const SizedBox(width: 14),
-              _buildLegendItem(AppColors.primaryLight, 'Một phần'),
-              const SizedBox(width: 14),
-              _buildLegendItem(AppColors.border, 'Chưa có'),
-            ],
+
+          const SizedBox(height: 14),
+
+          // Divider
+          Container(
+            height: 1.2,
+            color: const Color(0xFFE2E8F0),
+          ),
+
+          const SizedBox(height: 10),
+
+          // 4. Category Color Legend
+          Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: categories.map((cat) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8.5,
+                    height: 8.5,
+                    decoration: BoxDecoration(
+                      color: cat.color,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 1.0),
+                    ),
+                  ),
+                  const SizedBox(width: 4.5),
+                  Text(
+                    cat.name,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-        ),
-      ],
-    );
+/// CustomPainter that renders a 5-segment circular halo ring surrounding the day number.
+/// Each segment corresponds to a parent category.
+/// Completed categories glow in their signature Neo-Brutalist color.
+/// Incomplete categories are left empty with a subtle light track.
+class _MultiCategoryRingPainter extends CustomPainter {
+  final List<bool> completedStates;
+  final List<Color> categoryColors;
+  final bool isSelected;
+  final bool isToday;
+  final bool isFuture;
+
+  _MultiCategoryRingPainter({
+    required this.completedStates,
+    required this.categoryColors,
+    required this.isSelected,
+    required this.isToday,
+    required this.isFuture,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - 5.5) / 2;
+    const strokeWidth = 2.8;
+    const gapAngle = 0.14; // Radians between segments (~8 degrees)
+
+    final n = categoryColors.isNotEmpty ? categoryColors.length : 5;
+    final segmentSweep = (2 * math.pi) / n;
+    final arcSweep = segmentSweep - gapAngle;
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = isFuture ? const Color(0xFFF1F5F9) : const Color(0xFFE2E8F0);
+
+    // Draw the segments
+    for (int i = 0; i < n; i++) {
+      // Start from top (-pi / 2)
+      final startAngle = -math.pi / 2 + (i * segmentSweep) + (gapAngle / 2);
+      final isDone = i < completedStates.length && completedStates[i];
+
+      if (isDone) {
+        final colorPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..color = categoryColors[i];
+
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          arcSweep,
+          false,
+          colorPaint,
+        );
+      } else {
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          arcSweep,
+          false,
+          trackPaint,
+        );
+      }
+    }
+
+    // Outer Selection Indicator: Sharp Neo-Brutalist solid outline
+    if (isSelected) {
+      final selectPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = Colors.black;
+
+      canvas.drawCircle(center, radius + 2.5, selectPaint);
+    } else if (isToday) {
+      // Today subtle dark indicator dot below the number
+      final todayDotPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = Colors.black;
+      canvas.drawCircle(Offset(center.dx, center.dy + 11.5), 1.6, todayDotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MultiCategoryRingPainter oldDelegate) {
+    return oldDelegate.isSelected != isSelected ||
+        oldDelegate.isToday != isToday ||
+        oldDelegate.isFuture != isFuture ||
+        oldDelegate.completedStates != completedStates ||
+        oldDelegate.categoryColors != categoryColors;
   }
 }

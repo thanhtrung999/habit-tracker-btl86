@@ -9,6 +9,7 @@ class Goal {
   final int targetCount;
   final String unit;
   final DateTime createdAt;
+  final String? icon;
 
   const Goal({
     required this.id,
@@ -21,6 +22,7 @@ class Goal {
     this.targetCount = 1,
     this.unit = 'lần',
     required this.createdAt,
+    this.icon,
   });
 
   bool isScheduledForDate(DateTime date) {
@@ -40,6 +42,7 @@ class Goal {
     int? targetCount,
     String? unit,
     DateTime? createdAt,
+    String? icon,
   }) {
     return Goal(
       id: id ?? this.id,
@@ -52,6 +55,7 @@ class Goal {
       targetCount: targetCount ?? this.targetCount,
       unit: unit ?? this.unit,
       createdAt: createdAt ?? this.createdAt,
+      icon: icon ?? this.icon,
     );
   }
 
@@ -67,6 +71,7 @@ class Goal {
       'targetCount': targetCount,
       'unit': unit,
       'createdAt': createdAt.toIso8601String(),
+      'icon': icon,
     };
   }
 
@@ -87,6 +92,7 @@ class Goal {
       targetCount: (map['targetCount'] as int?) ?? 1,
       unit: (map['unit'] as String?) ?? 'lần',
       createdAt: DateTime.tryParse((map['createdAt'] as String?) ?? '') ?? DateTime.now(),
+      icon: map['icon'] as String?,
     );
   }
 }

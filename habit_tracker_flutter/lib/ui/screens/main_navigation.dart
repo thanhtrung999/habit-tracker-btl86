@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/habit_viewmodel.dart';
+import '../widgets/navigation/curved_scoop_nav_bar.dart';
 import 'calendar_screen.dart';
 import 'goals_screen.dart';
+import 'profile_screen.dart';
 import 'today_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -15,6 +19,11 @@ class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
   void _switchTab(int index) {
+    if (_currentIndex == index) return;
+    HapticFeedback.selectionClick();
+    if (index == 0) {
+      Provider.of<HabitViewModel>(context, listen: false).syncTodayDate();
+    }
     setState(() {
       _currentIndex = index;
     });
@@ -24,57 +33,48 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final screens = [
       TodayScreen(
-        onNavigateToGoals: () => _switchTab(2),
+        onNavigateToGoals: () => _switchTab(1),
       ),
+      const GoalsScreen(),
       CalendarScreen(
         onNavigateToToday: () => _switchTab(0),
       ),
-      const GoalsScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: AppColors.border, width: 1.0),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x06000000),
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: _switchTab,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: AppColors.primarySubtle,
-            height: 64,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.today_outlined, size: 24),
-                selectedIcon: Icon(Icons.today_rounded, size: 24, color: AppColors.primary),
-                label: 'Hôm nay',
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: CurvedScoopNavBar(
+            currentIndex: _currentIndex,
+            onTap: _switchTab,
+            items: const [
+              CurvedNavItem(
+                label: 'Home',
+                icon: Icons.home_outlined,
+                selectedIcon: Icons.home_outlined,
               ),
-              NavigationDestination(
-                icon: Icon(Icons.calendar_month_outlined, size: 24),
-                selectedIcon: Icon(Icons.calendar_month_rounded, size: 24, color: AppColors.primary),
-                label: 'Lịch & Tiến trình',
+              CurvedNavItem(
+                label: 'My Habit',
+                icon: Icons.bar_chart_rounded,
+                selectedIcon: Icons.bar_chart_rounded,
               ),
-              NavigationDestination(
-                icon: Icon(Icons.track_changes_outlined, size: 24),
-                selectedIcon: Icon(Icons.track_changes_rounded, size: 24, color: AppColors.primary),
-                label: 'Mục tiêu',
+              CurvedNavItem(
+                label: 'Report',
+                icon: Icons.calendar_month_outlined,
+                selectedIcon: Icons.calendar_month_outlined,
+              ),
+              CurvedNavItem(
+                label: 'User',
+                icon: Icons.person_outline_rounded,
+                selectedIcon: Icons.person_outline_rounded,
               ),
             ],
           ),
